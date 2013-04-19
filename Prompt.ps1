@@ -213,6 +213,7 @@ Add-Type @'
 			: base(8)
 		{
 			var mainEnabled = new ReverseEnabledContainer(onChangeLists);
+
 			AddCounter("a:{0}", mainEnabled, 0, 'A');
 
 			AddCounter("m:{0}", mainEnabled, 0, new[] { 'M', 'R' })
@@ -229,6 +230,25 @@ Add-Type @'
 			AddCounter("?:{0}", mainEnabled, 0, '?');
 
 			AddSubCounterToAll("({0})", onChangeLists);
+		}
+	}
+	public class GitStatusCounterCollection
+		: StatusCounterCollection
+	{
+		public GitStatusCounterCollection()
+			: base(3)
+		{
+			var always = new EnabledContainer(true);
+
+			AddCounter("a:{0}", always, 0, 'A');
+
+			AddCounter("u:{0}", always, 0, new[] { 'M', 'R' })
+				.ChildCounter("/{0}", always, 1, 'M');
+
+			AddCounter("d:{0}", always, 0, 'D')
+				.ChildCounter("/{0}", always, 1, 'D');
+
+			AddCounter("?:{0}", always, 0, '?');
 		}
 	}
 '@
@@ -369,54 +389,16 @@ function prompt {
 			}
 		}
 
-		$untracked = 0
-		$updates = 0
-		$deletes = 0
-
-		$addsIndex = 0
-		$deletesIndex = 0
-		$updatesIndex = 0
-		$renamesIndex = 0
-
+		$counters = New-Object GitStatusCounterCollection
 		git status --porcelain | foreach {
-			if ($_ -match "^([\w?]|\s)([\w?])?\s*") {
-				switch ($matches[1]) {
-					"A" { $addsIndex++ }
-					"M" { $updatesIndex++ }
-					"D" { $deletesIndex++ }
-					"R" { $renamesIndex++ }
-					"?" { $untracked++ }
-				}
-				switch ($matches[2]) {
-					"M" { $updates++ }
-					"D" { $deletes++ }
-				}
-			}
+			$counters.AddStatusLine($_)
 		}
 
-		# Treat renames as modifications
-		$updatesIndex += $renamesIndex
-
-		if ($addsIndex -gt 0) {
-			outputNormal " a:$addsIndex"
-		}
-
-		if (($updates + $updatesIndex) -gt 0) {
-			outputNormal " m:$updatesIndex"
-			if ($updates -gt 0) {
-				outputNormal "/$updates"
-			}
-		}
-
-		if (($deletes + $deletesIndex) -gt 0) {
-			outputNormal " d:$deletesIndex"
-			if ($deletes -gt 0) {
-				outputNormal "/$deletes"
-			}
-		}
-
-		if ($untracked -gt 0) {
-			outputNormal " ?:$untracked"
+		$output = $counters.ToString()
+		if ($output.Length -gt 0)
+		{
+			outputNormal " "
+			outputNormal $output
 		}
 
 		outputMarker ")"
