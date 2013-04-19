@@ -281,21 +281,6 @@ function prompt {
 		Write-Host ($message) -NoNewLine -ForegroundColor Red
 	}
 
-	function incrementChangeList($onChangeList, [ref]$counter, [ref]$changeListCounter)
-	{
-		if ($onChangeList -eq $true)
-		{
-			$changeListCounter.value = $changeListCounter.value + 1
-			outputMarker "+"
-		}
-		else
-		{
-			$counter.Value = $counter.Value + 1
-			outputMarker "."
-		}
-
-		write-host "counter: $counter, change list: $changeListCounter"
-	}
 	function WriteSvnStatus
 	{
 		if (Get-Command "svn")
