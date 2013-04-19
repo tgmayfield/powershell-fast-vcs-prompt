@@ -288,10 +288,12 @@ function prompt {
 			$info = svn info
 			if ($info.Exception -ne $null)
 			{
+				$error.clear()
 				return $false
 			}
 			if ($LASTEXITCODE -ne 0)
 			{
+				$error.clear()
 				return $false
 			}
 
@@ -357,6 +359,7 @@ function prompt {
 	function writeGitStatus {
 		$branch = git branch -v -v --color=never 2>&1
 		if ($branch.Exception -ne $null) {
+			$error.clear()
 			return $false
 		}
 
