@@ -364,12 +364,32 @@ function prompt {
 		$branch | foreach {
 			if ($_ -match "^\*\s*([^ ]*)\s*") {
 				$branch = $matches[1].trim()
-				outputBranch $branch
-				if ($_ -match "ahead ([0-9]+)") {
-					outputImportant ("+" + $matches[1])
+				if ($branch -eq '(no')
+				{
+					outputImportant "no branch"
+					$ref = git log --pretty=format:'%h' -n 1
+					$ref | foreach {
+						outputImportant ":$ref"
+					}
+					$tags = git tag --points-at HEAD
+					$tagCount = 0
+					$tags | foreach {
+						$tagCount++
+						if ($tagCount -le 3)
+						{
+							outputMarker ", $_"
+						}
+					}
 				}
-				if ($_ -match "behind ([0-9]+)") {
-					outputImportant ("-" + $matches[1])
+				else
+				{
+					outputBranch $branch
+					if ($_ -match "ahead ([0-9]+)") {
+						outputImportant ("+" + $matches[1])
+					}
+					if ($_ -match "behind ([0-9]+)") {
+						outputImportant ("-" + $matches[1])
+					}
 				}
 			}
 		}
