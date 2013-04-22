@@ -300,12 +300,15 @@ function prompt {
 			$root = ''
 			$url = ''
 			$url_root = ''
-			$rev = 0
 			$info | foreach {
 				if ($_ -match "^Working Copy Root Path: (.*)$")
 				{
 					$root = $matches[1]
 				}
+			}
+
+			$info = svn info $root
+			$info | foreach {
 				if ($_ -match "^URL: (.*)$")
 				{
 					$url = $matches[1]
@@ -313,10 +316,6 @@ function prompt {
 				if ($_ -match "^Repository Root: (.*)$")
 				{
 					$url_root = $matches[1]
-				}
-				if ($_ -match "^Revision: (.*)$")
-				{
-					$rev = $matches[1]
 				}
 			}
 
