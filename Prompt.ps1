@@ -319,7 +319,15 @@ function prompt {
 				}
 			}
 
-			$branch = $url.Substring($url_root.Length + 1)
+			$branch = ""
+			if ($url -eq $url_root)
+			{
+				$branch = "/"
+			}
+			else
+			{
+				$branch = $url.Substring($url_root.Length)
+			}
 
 			outputMarker " ("
 			outputBranch $branch
