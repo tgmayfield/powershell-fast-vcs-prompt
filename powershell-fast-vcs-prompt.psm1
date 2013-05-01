@@ -259,6 +259,8 @@ if (test-path function:\prompt) {
 	remove-item -force function:\prompt
 }
 function prompt {
+	$realLASTEXITCODE = $LASTEXITCODE
+
 	function outputNormal([string]$message)
 	{
 		Write-Host ($message) -NoNewLine -ForegroundColor Green
@@ -438,5 +440,6 @@ function prompt {
 	writeSvnStatus
 	writeGitStatus
 
+	$LASTEXITCODE = $realLASTEXITCODE
 	return $ending
 }
