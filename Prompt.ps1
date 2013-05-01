@@ -287,12 +287,12 @@ function prompt {
 			if ($info.Exception -ne $null)
 			{
 				$error.clear()
-				return $false
+				return
 			}
 			if ($LASTEXITCODE -ne 0)
 			{
 				$error.clear()
-				return $false
+				return
 			}
 
 			$root = ''
@@ -353,11 +353,11 @@ function prompt {
 			}
 
 			outputMarker ")"
-			return $true
+			return
 		}
 		else
 		{
-			return $false
+			return
 		}
 	}
 
@@ -365,7 +365,7 @@ function prompt {
 		$branch = git branch -v -v --color=never 2>&1
 		if ($branch.Exception -ne $null) {
 			$error.clear()
-			return $false
+			return
 		}
 
 		outputMarker " ("
@@ -415,11 +415,28 @@ function prompt {
 		}
 
 		outputMarker ")"
-		return $true
+		return
 	}
 
-	& $oldPrompt
+	$old = & $oldPrompt
+	$old = $old.Trim()
+
+	$ending = ""
+	$endRegex = "^([^>]*)(.+)$"
+	if ($old -match $endRegex)
+	{
+		$old = $matches[1]
+		$ending = $matches[2]
+	}
+	if ($ending -eq "")
+	{
+		$ending = ('>' * ($nestedPromptLevel + 1))
+	}
+
+	Write-Host -NoNewLine $old
+
 	writeSvnStatus
 	writeGitStatus
-	return "> "
+
+	return $ending
 }
