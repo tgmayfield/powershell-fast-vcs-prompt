@@ -1,13 +1,12 @@
 # Fast VCS prompt for Powershell
 
-To include in your powershell config, just run the included .ps1 file as part of your profile. For example, if I cloned this repository to `<My documents>\WindowsPowershell\powershell-fast-vcs-prompt`, I would add the line:
+To include in your powershell config, clone the repository to your Powershell Modules directory (`<My documents>\WindowsPowershell\Modules\powershell-fast-vcs-prompt`) and then import the module:
 
 ```Powershell
-$profileLocation = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
-. ($profileLocation + '.\powershell-fast-vcs-prompt\Prompt.ps1')
+Import-Module Powershell-Fast-VCS-Prompt
 ```
 
-Any existing customizations to the prompt function will be included (it gets output prior to showing version control information).
+Any existing customizations to the prompt function will be included (it gets output prior to showing version control information). The `Import-Module` directive should occur after your custom prompt function.
 
 By default, it will show your current prompt, then show:
 
