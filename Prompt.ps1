@@ -259,8 +259,6 @@ if (test-path function:\prompt) {
 	remove-item -force function:\prompt
 }
 function prompt {
-	[console]::TreatControlCAsInput = $true
-
 	function outputNormal([string]$message)
 	{
 		Write-Host ($message) -NoNewLine -ForegroundColor Green
@@ -423,6 +421,5 @@ function prompt {
 	& $oldPrompt
 	writeSvnStatus
 	writeGitStatus
-	[console]::TreatControlCAsInput = $false
 	return "> "
 }
