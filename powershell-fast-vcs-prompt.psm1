@@ -329,7 +329,7 @@ function prompt {
 				$branch = $url.Substring($url_root.Length)
 			}
 
-			outputMarker " ("
+			outputMarker " (svn "
 			outputBranch $branch
 
 			$stat = svn status $root
@@ -370,7 +370,7 @@ function prompt {
 			return
 		}
 
-		outputMarker " ("
+		outputMarker " (git "
 		$branch | foreach {
 			if ($_ -match "^\*\s*([^ ]*)\s*") {
 				$branch = $matches[1].trim()
