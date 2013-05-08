@@ -251,6 +251,24 @@ Add-Type @'
 			AddCounter("?:{0}", always, 0, '?');
 		}
 	}
+	public class MercurialStatusCounterCollection
+		: StatusCounterCollection
+	{
+		public MercurialStatusCounterCollection()
+			: base(2)
+		{
+			var always = new EnabledContainer(true);
+
+			AddCounter("a:{0}", always, 0, 'A');
+
+			AddCounter("u:{0}", always, 0, 'M');
+
+			AddCounter("d:{0}", always, 0, 'R')
+				.ChildCounter("/{0}", always, 0, '!');
+
+			AddCounter("?:{0}", always, 0, '?');
+		}
+	}
 '@
 
 
@@ -420,6 +438,35 @@ function prompt {
 		return
 	}
 
+	function writeHgStatus {
+		if (-not (Get-Command "hg"))
+		{
+			return
+		}
+		$branch = hg branch
+		if (($branch.Exception -ne $null) -Or ($LASTEXITCODE -ne 0))
+		{
+			$error.clear()
+			return
+		}
+		outputMarker " (hg "
+		outputBranch $branch
+
+		$counters = New-Object MercurialStatusCounterCollection
+		hg status | foreach {
+			$counters.AddStatusLine($_)
+		}
+
+		$output = $counters.ToString()
+		if ($output.Length -gt 0)
+		{
+			outputNormal " "
+			outputNormal $output
+		}
+
+		outputMarker ")"
+	}
+
 	$old = & $oldPrompt
 	$old = $old.Trim()
 
@@ -439,6 +486,7 @@ function prompt {
 
 	writeSvnStatus
 	writeGitStatus
+	writeHgStatus
 
 	$LASTEXITCODE = $realLASTEXITCODE
 	return $ending
