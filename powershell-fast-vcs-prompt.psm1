@@ -1,11 +1,31 @@
 Add-Type @'
 	using System;
 	using System.Collections.Generic;
-	using System.Linq;
 	using System.Text;
+
+	public static class Helpers
+	{
+		public static bool Contains<T>(IEnumerable<T> values, T check)
+		{
+			foreach (T value in values)
+			{
+				if (Equals(value, check))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+	}
 
 	public class EnabledContainer
 	{
+		static EnabledContainer()
+		{
+			Always = new EnabledContainer();
+			Always.Enabled = true;
+		}
+
 		public EnabledContainer()
 		{
 		}
@@ -15,12 +35,14 @@ Add-Type @'
 			Enabled = enabled;
 		}
 
-		public virtual bool Enabled { get; set; }
-
-		public static readonly EnabledContainer Always = new EnabledContainer()
+		private bool _enabled;
+		public virtual bool Enabled
 		{
-			Enabled = true,
-		};
+			get { return _enabled; }
+			set { _enabled = value; }
+		}
+
+		public static readonly EnabledContainer Always;
 	}
 
 	public class ReverseEnabledContainer
@@ -86,7 +108,15 @@ Add-Type @'
 		}
 		public int Total
 		{
-			get { return Count + SubCounters.Sum(x => x.Total); }
+			get
+			{
+				int result = Count;
+				foreach (StatusCounter counter in SubCounters)
+				{
+					result += counter.Total;
+				}
+				return result;
+			}
 		}
 
 		public void AddStatusLine(string status, string file)
@@ -94,22 +124,18 @@ Add-Type @'
 			if (_enabled.Enabled && status.Length >= StatusPosition + 1)
 			{
 				char c = status[StatusPosition];
-				if (StatusCharacters.Contains(c))
+				if (Helpers.Contains(StatusCharacters, c))
 				{
 					Files.Add(file);
 				}
 			}
-			foreach (var sub in SubCounters)
+			foreach (StatusCounter sub in SubCounters)
 			{
 				sub.AddStatusLine(status, file);
 			}
 		}
 
-		public StatusCounter ChildCounter(string countDisplayFormat, EnabledContainer enabled, int statusPosition, char statusCharacter)
-		{
-			return ChildCounter(countDisplayFormat, enabled, statusPosition, new[] { statusCharacter });
-		}
-		public StatusCounter ChildCounter(string countDisplayFormat, EnabledContainer enabled, int statusPosition, char[] statusCharacters)
+		public StatusCounter ChildCounter(string countDisplayFormat, EnabledContainer enabled, int statusPosition, params char[] statusCharacters)
 		{
 			_subCounters.Add(new StatusCounter(countDisplayFormat, enabled, statusPosition, statusCharacters));
 			return this;
@@ -122,7 +148,7 @@ Add-Type @'
 
 		public void AddSubCounterToAll(string displayFormat, EnabledContainer enabled)
 		{
-			foreach (var sub in _subCounters)
+			foreach (StatusCounter sub in _subCounters)
 			{
 				sub.AddSubCounterToAll(displayFormat, enabled);
 			}
@@ -136,9 +162,9 @@ Add-Type @'
 				return "";
 			}
 
-			var result = new StringBuilder();
+			StringBuilder result = new StringBuilder();
 			result.AppendFormat(CountDisplayFormat, Count);
-			foreach (var sub in SubCounters)
+			foreach (StatusCounter sub in SubCounters)
 			{
 				result.Append(sub);
 			}
@@ -165,21 +191,33 @@ Add-Type @'
 			get { return _counters; }
 		}
 
-		public StatusCounter AddCounter(string countDisplayFormat, EnabledContainer enabled, int statusPosition, char statusCharacter)
+		public StatusCounter AddCounter(string countDisplayFormat, EnabledContainer enabled, int statusPosition, params char[] statusCharacters)
 		{
-			return AddCounter(countDisplayFormat, enabled, statusPosition, new[] { statusCharacter });
-		}
-		public StatusCounter AddCounter(string countDisplayFormat, EnabledContainer enabled, int statusPosition, char[] statusCharacters)
-		{
-			var counter = new StatusCounter(countDisplayFormat, enabled, statusPosition, statusCharacters);
+			StatusCounter counter = new StatusCounter(countDisplayFormat, enabled, statusPosition, statusCharacters);
 			_counters.Add(counter);
 			return counter;
 		}
 
 		public override string ToString()
 		{
-			return string.Join(" ", _counters.Select(c => c.ToString())
-				.Where(s => !string.IsNullOrEmpty(s)));
+			StringBuilder result = new StringBuilder();
+			bool first = true;
+			foreach (StatusCounter counter in _counters)
+			{
+				string text = counter.ToString();
+				if (string.IsNullOrEmpty(text))
+				{
+					continue;
+				}
+				
+				if (!first)
+				{
+					result.Append(" ");
+				}
+				first = false;
+				result.Append(text);
+			}
+			return result.ToString();
 		}
 
 		public void AddStatusLine(string line)
@@ -192,7 +230,7 @@ Add-Type @'
 			string status = line.Substring(0, _statusLength);
 			string file = line.Substring(_statusLength);
 
-			foreach (var counter in Counters)
+			foreach (StatusCounter counter in Counters)
 			{
 				counter.AddStatusLine(status, file);
 			}
@@ -200,7 +238,7 @@ Add-Type @'
 
 		public void AddSubCounterToAll(string displayFormat, EnabledContainer enabledContainer)
 		{
-			foreach (var counter in _counters)
+			foreach (StatusCounter counter in _counters)
 			{
 				counter.AddSubCounterToAll(displayFormat, enabledContainer);
 			}
@@ -212,11 +250,11 @@ Add-Type @'
 		public SubversionStatusCounterCollection(EnabledContainer onChangeLists)
 			: base(8)
 		{
-			var mainEnabled = new ReverseEnabledContainer(onChangeLists);
+			EnabledContainer mainEnabled = new ReverseEnabledContainer(onChangeLists);
 
 			AddCounter("a:{0}", mainEnabled, 0, 'A');
 
-			AddCounter("m:{0}", mainEnabled, 0, new[] { 'M', 'R' })
+			AddCounter("m:{0}", mainEnabled, 0, 'M', 'R')
 				.ChildCounter("+{0}", mainEnabled, 1, 'M');
 
 			AddCounter("d:{0}", mainEnabled, 0, 'D')
@@ -238,11 +276,11 @@ Add-Type @'
 		public GitStatusCounterCollection()
 			: base(3)
 		{
-			var always = new EnabledContainer(true);
+			EnabledContainer always = new EnabledContainer(true);
 
 			AddCounter("a:{0}", always, 0, 'A');
 
-			AddCounter("u:{0}", always, 0, new[] { 'M', 'R' })
+			AddCounter("u:{0}", always, 0, 'M', 'R')
 				.ChildCounter("/{0}", always, 1, 'M');
 
 			AddCounter("d:{0}", always, 0, 'D')
@@ -257,7 +295,7 @@ Add-Type @'
 		public MercurialStatusCounterCollection()
 			: base(2)
 		{
-			var always = new EnabledContainer(true);
+			EnabledContainer always = new EnabledContainer(true);
 
 			AddCounter("a:{0}", always, 0, 'A');
 
