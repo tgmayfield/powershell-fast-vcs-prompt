@@ -422,8 +422,11 @@ function prompt {
 	function writeGitStatus {
 		$branch = git branch -v -v --color=never 2>&1
 		if ($branch.Exception -ne $null) {
-			$error.clear()
-			return
+			if ($LASTEXITCODE -ne 255)
+			{
+				$error.clear()
+				return
+			}
 		}
 
 		outputMarker " (git "
