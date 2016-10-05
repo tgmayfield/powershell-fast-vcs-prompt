@@ -454,10 +454,10 @@ function prompt {
 				{
 					outputBranch $branch
 					if ($_ -match "ahead ([0-9]+)") {
-						outputImportant ("+" + $matches[1])
+						outputImportant (" +" + $matches[1])
 					}
 					if ($_ -match "behind ([0-9]+)") {
-						outputImportant ("-" + $matches[1])
+						outputImportant (" -" + $matches[1])
 					}
 				}
 			}
