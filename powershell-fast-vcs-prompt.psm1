@@ -433,7 +433,7 @@ function prompt {
 		$branch | foreach {
 			if ($_ -match "^\*\s*([^ ]*)\s*") {
 				$branch = $matches[1].trim()
-				if ($branch -eq '(no')
+				if ($branch -eq '(no' -or $branch -eq "(HEAD")
 				{
 					outputImportant "no branch"
 					$ref = git log --pretty=format:'%h' -n 1
