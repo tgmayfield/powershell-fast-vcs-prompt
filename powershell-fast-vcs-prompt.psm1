@@ -337,89 +337,89 @@ function prompt {
 		Write-Host ($message) -NoNewLine -ForegroundColor Red
 	}
 
-	function WriteSvnStatus
+	function writeSvnStatus
 	{
-		if (Get-Command "svn")
+		if (-Not (Get-Command "svn" -ErrorAction Ignore))
 		{
-			$info = svn info
-			if ($info.Exception -ne $null)
-			{
-				$error.clear()
-				return
-			}
-			if ($LASTEXITCODE -ne 0)
-			{
-				$error.clear()
-				return
-			}
-
-			$root = ''
-			$url = ''
-			$url_root = ''
-			$info | foreach {
-				if ($_ -match "^Working Copy Root Path: (.*)$")
-				{
-					$root = $matches[1]
-				}
-			}
-
-			$info = svn info $root
-			$info | foreach {
-				if ($_ -match "^URL: (.*)$")
-				{
-					$url = $matches[1]
-				}
-				if ($_ -match "^Repository Root: (.*)$")
-				{
-					$url_root = $matches[1]
-				}
-			}
-
-			$branch = ""
-			if ($url -eq $url_root)
-			{
-				$branch = "/"
-			}
-			else
-			{
-				$branch = $url.Substring($url_root.Length)
-			}
-
-			outputMarker " (svn "
-			outputBranch $branch
-
-			$stat = svn status $root
-
-			$onChangeLists = New-Object EnabledContainer
-			$onChangeLists.Enabled = $false
-
-			$counters = New-Object SubversionStatusCounterCollection -ArgumentList $onChangeLists
-
-			$stat | foreach {
-				if ($_ -match "^--- Changelist")
-				{
-					$onChangeLists.Enabled = $true
-				}
-				$counters.AddStatusLine($_)
-			}
-
-			$output = $counters.ToString()
-			if ($output.Length -gt 0)
-			{
-				outputNormal " "
-				outputNormal $output
-			}
-
-			outputMarker ")"
 			return
+		}
+		$info = svn info
+		if ($info.Exception -ne $null)
+		{
+			$error.clear()
+			return
+		}
+		if ($LASTEXITCODE -ne 0)
+		{
+			$error.clear()
+			return
+		}
+
+		$root = ''
+		$url = ''
+		$url_root = ''
+		$info | foreach {
+			if ($_ -match "^Working Copy Root Path: (.*)$")
+			{
+				$root = $matches[1]
+			}
+		}
+
+		$info = svn info $root
+		$info | foreach {
+			if ($_ -match "^URL: (.*)$")
+			{
+				$url = $matches[1]
+			}
+			if ($_ -match "^Repository Root: (.*)$")
+			{
+				$url_root = $matches[1]
+			}
+		}
+
+		$branch = ""
+		if ($url -eq $url_root)
+		{
+			$branch = "/"
 		}
 		else
 		{
-			return
+			$branch = $url.Substring($url_root.Length)
 		}
+
+		outputMarker " (svn "
+		outputBranch $branch
+
+		$stat = svn status $root
+
+		$onChangeLists = New-Object EnabledContainer
+		$onChangeLists.Enabled = $false
+
+		$counters = New-Object SubversionStatusCounterCollection -ArgumentList $onChangeLists
+
+		$stat | foreach {
+			if ($_ -match "^--- Changelist")
+			{
+				$onChangeLists.Enabled = $true
+			}
+			$counters.AddStatusLine($_)
+		}
+
+		$output = $counters.ToString()
+		if ($output.Length -gt 0)
+		{
+			outputNormal " "
+			outputNormal $output
+		}
+
+		outputMarker ")"
 	}
 
 	function writeGitStatus {
+		if (-Not (Get-Command "git" -ErrorAction Ignore))
+		{
+			return
+		}
 		$branch = git branch -v -v --color=never 2>&1
 		if ($branch.Exception -ne $null) {
 			if ($LASTEXITCODE -ne 255)
@@ -480,7 +480,7 @@ function prompt {
 	}
 
 	function writeHgStatus {
-		if (-not (Get-Command "hg"))
+		if (-not (Get-Command "hg" -ErrorAction Ignore))
 		{
 			return
 		}
