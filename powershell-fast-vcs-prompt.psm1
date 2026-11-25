@@ -155,9 +155,12 @@ class Statuses
 		}
 		if ($this.Delta)
 		{
-			Write-Host -NoNewLine -ForegroundColor DarkMagenta " ("
-			Write-Host -NoNewLine -ForegroundColor Magenta $this.Delta
-			Write-Host -NoNewLine -ForegroundColor DarkMagenta ")"
+			$light = [System.ConsoleColor]::Magenta
+			if ($this.Delta -Eq "~")
+			{
+				$light = [System.ConsoleColor]::DarkMagenta
+			}
+			Write-Host -NoNewLine -ForegroundColor $light $this.Delta
 		}
 		$this.Updated.Output("u")
 		$this.Added.Output("a")
