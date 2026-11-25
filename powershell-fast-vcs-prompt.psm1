@@ -29,6 +29,7 @@ class SubmoduleStatus
 	{
 		Write-Host "" # Force a newline
 		Write-Host -NoNewLine "  "
+		Write-Host -NoNewLine -ForegroundColor DarkGray "sub: "
 		Write-Host -NoNewLine -ForegroundColor DarkYellow $this.Location
 		if ($this.Commit)
 		{
@@ -70,6 +71,7 @@ class Statuses
 	[StatusCounter]$Added
 	[StatusCounter]$Deleted
 	[SubmoduleStatus[]] $Submodules = @()
+	[string]$Extra
 
 	[void] LoadTags()
 	{
@@ -173,6 +175,10 @@ class Statuses
 				Write-Host -NoNewLine -ForegroundColor DarkYellow $tag
 			}
 		}
+		if ($this.Extra)
+		{
+			Write-Host -NoNewLine -ForegroundColor DarkGray " - " $this.Extra
+		}
 		foreach ($sub in $this.Submodules)
 		{
 			$sub.Output()
@@ -232,6 +238,42 @@ function prompt {
 			}
 		}
 
+		$parents = [System.Collections.ArrayList]@()
+		$parentDirectory = git rev-parse --show-superproject-working-tree
+		while ($parentDirectory)
+		{
+			pushd $parentDirectory
+			$extra = $parentDirectory
+			$parentDirectory = git rev-parse --show-superproject-working-tree
+			$parent = $null
+			try
+			{
+				$parent = [Statuses]::new()
+				$parent.LoadStatus()
+				$parent.Submodules = @() # We don't want to repeat
+				$parent.Extra = $extra
+			}
+			finally
+			{
+				popd
+			}
+			if ($parent)
+			{
+				$parents.Insert(0, $parent)
+				# $parents += $parent
+			}
+		}
+
+		if ($parents)
+		{
+			foreach ($parent in $parents)
+			{
+				Write-Host -NoNewLine -ForegroundColor DarkGray "parent git: "
+				$parent.Output()
+				Write-Host ""
+			}
+		}
+		Write-Host -NoNewLine -ForegroundColor DarkGray "git: "
 		$counts.Output()
 		Write-Host ""
 	}
