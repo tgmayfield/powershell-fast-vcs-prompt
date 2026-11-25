@@ -23,6 +23,7 @@ class SubmoduleStatus
 	[bool]$Commit
 	[bool]$TrackedChanges
 	[bool]$UntrackedChanges
+	[Statuses]$Details
 
 	[void] Output()
 	{
@@ -31,15 +32,24 @@ class SubmoduleStatus
 		Write-Host -NoNewLine -ForegroundColor DarkYellow $this.Location
 		if ($this.Commit)
 		{
-			Write-Host -NoNewLine -ForegroundColor Magenta " changed commit"
+			Write-Host -NoNewLine -ForegroundColor DarkGray ", "
+			Write-Host -NoNewLine -ForegroundColor Magenta "changed commit"
 		}
 		if ($this.TrackedChanges)
 		{
-			Write-Host -NoNewLine -ForegroundColor Green " changes"
+			Write-Host -NoNewLine -ForegroundColor DarkGray ", "
+			Write-Host -NoNewLine -ForegroundColor Green "changes"
 		}
 		if ($this.UntrackedChanges)
 		{
-			Write-Host -NoNewLine -ForegroundColor DarkGreen " extra files"
+			Write-Host -NoNewLine -ForegroundColor DarkGray ", "
+			Write-Host -NoNewLine -ForegroundColor DarkGreen "extra files"
+		}
+
+		if ($this.Details)
+		{
+			Write-Host -NoNewLine -ForegroundColor DarkGray ", "
+			$this.Details.Output()
 		}
 	}
 }
@@ -63,6 +73,31 @@ class Statuses
 
 	[void] ParsePorcelain([string]$line)
 	{
+		if ($line.StartsWith("# branch.head "))
+		{
+			$this.Branch = $line.Substring("# branch.head ".Length)
+			return
+		}
+		if ($line.StartsWith("# branch.oid "))
+		{
+			$this.Commit = $line.Substring("# branch.oid ".Length)
+			return
+		}
+		if ($line.StartsWith("# branch.upstream "))
+		{
+			# Ignored
+			return
+		}
+		if ($line.StartsWith("# branch.ab "))
+		{
+			$this.Delta = $line.Substring("# branch.ab ".Length).Replace(" ", "").Replace("-0", "")
+			if ($this.Delta -Eq "+0")
+			{
+				$this.Delta = "~"
+			}
+			return
+		}
+
 		if ($line[0] -Eq "?")
 		{
 			$this.Added.Unstaged++
@@ -95,7 +130,15 @@ class Statuses
 
 	[void] Output()
 	{
-		Write-Host -NoNewLine -ForegroundColor Yellow $this.Branch
+		if ($this.Branch -Or $this.Commit)
+		{
+			$b = $this.Branch
+			if ($b -eq "(detached)")
+			{
+				$b = "detached:" + $this.Commit.Substring(0, 11)
+			}
+			Write-Host -NoNewLine -ForegroundColor Yellow $b
+		}
 		if ($this.Delta)
 		{
 			Write-Host -NoNewLine -ForegroundColor DarkMagenta " ("
@@ -126,6 +169,7 @@ if (test-path function:\prompt) {
 }
 function prompt {
 	$realLASTEXITCODE = $LASTEXITCODE
+	$command = $$
 
 	function writeGitStatusNew
 	{
@@ -150,38 +194,35 @@ function prompt {
 
 		$counts = [Statuses]::new()
 		$status | foreach {
-			$line = $_
-			if ($line.StartsWith("# branch.head "))
-			{
-				$counts.Branch = $line.Substring("# branch.head ".Length)
-			}
-			elseif ($line.StartsWith("# branch.oid "))
-			{
-				$counts.Commit = $line.Substring("# branch.oid ".Length)
-			}
-			elseif ($line.StartsWith("# branch.upstream "))
-			{
-			}
-			elseif ($line.StartsWith("# branch.ab "))
-			{
-				$counts.Delta = $line.Substring("# branch.ab ".Length).Replace(" ", "").Replace("-0", "")
-				if ($counts.Delta -Eq "+0")
-				{
-					$counts.Delta = "~"
-				}
-			}
-			else
-			{
-				$counts.ParsePorcelain($line)
-			}
-		}
-		if ($counts.Branch -eq "(detached)")
-		{
-			$counts.Branch = "detached:" + $oid.Substring(0, 11)
+			$counts.ParsePorcelain($_)
 		}
 		git tag --points-at HEAD | foreach {
 			$counts.Tags += $_
 		}
+
+		$loadSubDetails = $true # TODO: I'd prefer to only load submodule details when the user just presses enter and does not run any commands. $$ doesn't seem to work within the prompt function
+		if ($loadSubDetails)
+		{
+			foreach ($submodule in $counts.Submodules)
+			{
+				pushd $submodule.Location
+				try
+				{
+					$submodule.Details = [Statuses]::new()
+					git status --porcelain=2 --branch 2>&1 | foreach {
+						$submodule.Details.ParsePorcelain($_)
+					}
+					git tag --points-at HEAD | foreach {
+						$submodule.Details.Tags += $_
+					}
+				}
+				finally
+				{
+					popd
+				}
+			}
+		}
+
 		$counts.Output()
 		Write-Host ""
 	}
