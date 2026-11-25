@@ -71,6 +71,20 @@ class Statuses
 	[StatusCounter]$Deleted
 	[SubmoduleStatus[]] $Submodules = @()
 
+	[void] LoadTags()
+	{
+		git tag --points-at HEAD | foreach {
+			$this.Tags += $_
+		}
+	}
+
+	[void] LoadStatus()
+	{
+		git status --porcelain=2 --branch 2>&1 | foreach {
+			$this.ParsePorcelain($_)
+		}
+	}
+
 	[void] ParsePorcelain([string]$line)
 	{
 		if ($line.StartsWith("# branch.head "))
@@ -193,12 +207,8 @@ function prompt {
 		}
 
 		$counts = [Statuses]::new()
-		$status | foreach {
-			$counts.ParsePorcelain($_)
-		}
-		git tag --points-at HEAD | foreach {
-			$counts.Tags += $_
-		}
+		$counts.LoadStatus()
+		$counts.LoadTags()
 
 		$loadSubDetails = $true # TODO: I'd prefer to only load submodule details when the user just presses enter and does not run any commands. $$ doesn't seem to work within the prompt function
 		if ($loadSubDetails)
@@ -209,12 +219,8 @@ function prompt {
 				try
 				{
 					$submodule.Details = [Statuses]::new()
-					git status --porcelain=2 --branch 2>&1 | foreach {
-						$submodule.Details.ParsePorcelain($_)
-					}
-					git tag --points-at HEAD | foreach {
-						$submodule.Details.Tags += $_
-					}
+					$submodule.Details.LoadStatus()
+					$submodule.Details.LoadTags()
 				}
 				finally
 				{
