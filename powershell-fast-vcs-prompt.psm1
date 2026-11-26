@@ -71,6 +71,7 @@ class Statuses
 	[StatusCounter]$Added
 	[StatusCounter]$Deleted
 	[SubmoduleStatus[]] $Submodules = @()
+	[Statuses[]] $Parents # = [System.Collections.ArrayList]@()
 	[string]$Extra
 
 	[void] LoadTags()
@@ -183,6 +184,15 @@ class Statuses
 		{
 			$sub.Output()
 		}
+		if ($this.Parents)
+		{
+			foreach ($parent in $this.parents)
+			{
+				Write-Host ""
+				Write-Host -NoNewLine -ForegroundColor DarkGray "parent git: "
+				$parent.Output()
+			}
+		}
 	}
 }
 
@@ -194,24 +204,24 @@ function prompt {
 	$realLASTEXITCODE = $LASTEXITCODE
 	$command = $$
 
-	function writeGitStatusNew
+	function getGitStatus
 	{
 		if (-Not (Get-Command "git" -ErrorAction Ignore))
 		{
-			return
+			return $null
 		}
 		$status = git status --porcelain=2 --branch 2>&1
 		if ($LASTEXITCODE -eq 128)
 		{
 			$error.clear()
-			return
+			return $null
 		}
 		if ($status.Exception -ne $null)
 		{
 			if ($LASTEXITCODE -ne 255)
 			{
 				$error.clear()
-				return
+				return $null
 			}
 		}
 
@@ -238,8 +248,8 @@ function prompt {
 			}
 		}
 
-		$parents = [System.Collections.ArrayList]@()
 		$parentDirectory = git rev-parse --show-superproject-working-tree
+		$parents = [System.Collections.ArrayList]@()
 		while ($parentDirectory)
 		{
 			pushd $parentDirectory
@@ -259,27 +269,37 @@ function prompt {
 			}
 			if ($parent)
 			{
-				$parents.Insert(0, $parent)
+				# $counts.Parents.Insert(0, $parent)
 				# $parents += $parent
+				$parents += $parent
 			}
 		}
-
 		if ($parents)
 		{
-			foreach ($parent in $parents)
-			{
-				Write-Host -NoNewLine -ForegroundColor DarkGray "parent git: "
-				$parent.Output()
-				Write-Host ""
-			}
+			$counts.Parents = $parents
 		}
-		Write-Host -NoNewLine -ForegroundColor DarkGray "git: "
-		$counts.Output()
-		Write-Host ""
+
+		return $counts
 	}
 
-	writeGitStatusNew
-	& $oldPrompt
+	$gitStatus = getGitStatus
+	$alreadyOutput = $false
+	if ($gitStatus -And ($gitStatus.Submodules -Or $gitStatus.Parents))
+	{
+		Write-Host -NoNewLine -ForegroundColor DarkGray "git: "
+		$gitStatus.Output()
+		Write-Host ""
+		$alreadyOutput = $true
+		& $oldPrompt
+	}
+	else
+	{
+		& $oldPrompt
+		Write-Host -NoNewLine -ForegroundColor DarkGray " (git:"
+		$gitStatus.Output()
+		Write-Host -NoNewLine -ForegroundColor DarkGray ")"
+	}
+
 	$LASTEXITCODE = $realLASTEXITCODE
 	return $ending
 }
